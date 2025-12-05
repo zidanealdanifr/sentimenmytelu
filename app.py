@@ -10,6 +10,23 @@ from sklearn.naive_bayes import MultinomialNB
 from sklearn.svm import SVC
 import nltk
 import time
+import os
+
+# ... (konfigurasi halaman st.set_page_config ...)
+
+st.title("Cek File Hosting") # Judul sementara
+
+# --- (DEBUGGING) ---
+st.write("Lokasi folder saat ini:", os.getcwd())
+st.write("Daftar file yang ditemukan di folder ini:")
+files = os.listdir('.')
+st.write(files) # Ini akan menampilkan list semua file yang ada di server
+
+if 'ulasan_mytelu.csv' in files:
+    st.success("File ulasan_mytelu.csv DITEMUKAN!")
+else:
+    st.error("File ulasan_mytelu.csv TIDAK ADA di sini.")
+# ----------------------------------
 
 # --- 0. KONFIGURASI HALAMAN ---
 st.set_page_config(
@@ -364,3 +381,4 @@ with tab4:
                 **Confidence Score: {proba:.2%}**
 
                 """)
+
