@@ -19,13 +19,13 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- CSS CUSTOM ---
+# --- CSS CUSTOM (Hanya untuk merapikan kotak angka/Metric, TIDAK ADA HACK SCROLLBAR) ---
 st.markdown("""
 <style>
     .stDataFrame { width: 100%; }
     h1, h2, h3 { color: #8B0000; } /* Merah Maroon TelU */
     
-    /* Styling Container Metric */
+    /* Styling Container Metric agar rapi */
     div[data-testid="stMetric"] {
         background-color: #ffffff;
         padding: 15px;
@@ -33,34 +33,6 @@ st.markdown("""
         border-radius: 5px;
         text-align: center;
     }
-
-    /* --- MENGHILANGKAN SCROLLBAR (AGRESIF) --- */
-    
-    /* 1. Sembunyikan scrollbar global (Chrome/Safari/Webkit) */
-    ::-webkit-scrollbar {
-        width: 0px;
-        background: transparent;
-        display: none;
-    }
-
-    /* 2. Sembunyikan scrollbar khusus Sidebar (Chrome/Safari/Webkit) */
-    [data-testid="stSidebar"] ::-webkit-scrollbar {
-        display: none;
-        width: 0px;
-    }
-    
-    /* 3. Sembunyikan scrollbar Sidebar (Firefox) */
-    section[data-testid="stSidebar"] {
-        scrollbar-width: none; /* Firefox */
-        -ms-overflow-style: none; /* IE/Edge */
-    }
-    
-    /* 4. Memastikan konten user di sidebar juga tidak memunculkan scrollbar */
-    [data-testid="stSidebarUserContent"] {
-        scrollbar-width: none;
-        -ms-overflow-style: none;
-    }
-    
 </style>
 """, unsafe_allow_html=True)
 
@@ -139,7 +111,7 @@ with st.sidebar:
     Penelitian ini bertujuan untuk menganalisis sentimen ulasan pengguna aplikasi **"My TelU"** serta membandingkan performa algoritma **Naïve Bayes** dan **Support Vector Machine (SVM)**.
     """)
     
-    # Detail Metodologi & Hasil dari Abstrak
+    # Detail Metodologi
     st.markdown("""
     **📂 Dataset & Pre-processing**
     Menggunakan **138 ulasan bersih** melalui tahapan:
@@ -193,18 +165,19 @@ tab1, tab2, tab3, tab4 = st.tabs([
     "🤖 Klasifikasi Live"
 ])
 
-# --- TAB 1: PRE-PROCESSING (Full Table) ---
+# --- TAB 1: PRE-PROCESSING ---
 with tab1:
     st.subheader("Dataset & Kamus")
     
     col_d1, col_d2 = st.columns(2)
     with col_d1:
         st.write("**Dataset Ulasan**")
-        st.dataframe(df_raw[['Nama', 'content', 'score']], height=300, use_container_width=True)
+        # Menghapus height=300 agar tabel memanjang otomatis tanpa scroll dalam
+        st.dataframe(df_raw[['Nama', 'content', 'score']], use_container_width=True)
     
     with col_d2:
         st.write("**Kamus Normalisasi**")
-        st.dataframe(df_norm_view, height=300, use_container_width=True)
+        st.dataframe(df_norm_view, use_container_width=True)
             
     st.divider()
     st.subheader("Tahapan Pre-processing")
@@ -225,7 +198,6 @@ with tab1:
             df_proc['label'] = df_proc['score'].apply(lambda x: 0 if x > 3 else 1)
             df_proc.reset_index(drop=True, inplace=True)
             
-            # Simpan SEMUA kolom hasil pre-processing
             res_cf, res_norm, res_tok, res_stem = [], [], [], []
             
             for txt in df_proc['content']:
@@ -258,7 +230,6 @@ with tab2:
     if not st.session_state.is_processed:
         st.warning("⚠️ Mohon jalankan Pre-processing di Tab 1 terlebih dahulu.")
     else:
-        # Pilihan Parameter
         c_opt1, c_opt2 = st.columns(2)
         with c_opt1:
             model_display = st.selectbox("Pilih Algoritma Model:", ["Naïve Bayes", "SVM"])
@@ -273,11 +244,8 @@ with tab2:
         if show_eval:
             try:
                 df_eval_full = pd.read_csv('hasil_evaluasi.csv')
-                
-                # Mapping nama model agar cocok dengan CSV
                 model_csv_key = "Naive Bayes" if model_display == "Naïve Bayes" else "SVM"
                 
-                # Filter Data
                 df_view = df_eval_full[
                     (df_eval_full['Skenario K'] == k_selected) & 
                     (df_eval_full['Model'] == model_csv_key)
@@ -288,28 +256,20 @@ with tab2:
                 else:
                     st.markdown(f"### Performa {model_display} (K={k_selected})")
                     
-                    # 1. Tabel Detail
                     cols_show = ['Accuracy', 'Precision (Positif)', 'Recall (Positif)', 'F1-Score (Positif)', 'Precision (Negatif)', 'Recall (Negatif)', 'F1-Score (Negatif)']
-                    st.dataframe(df_view[cols_show], hide_index=True, use_container_width=True)
+                    st.dataframe(df_view[cols_show], use_container_width=True)
                     
-                    # 2. Confusion Matrix
                     st.write("#### Confusion Matrix")
-                    
                     row = df_view.iloc[0]
                     tp, tn = row['TP'], row['TN']
                     fp, fn = row['FP'], row['FN']
                     cm_array = np.array([[tp, fn], [fp, tn]]) 
                     
                     fig, ax = plt.subplots(figsize=(5, 4))
-                    
                     sns.heatmap(cm_array, annot=True, fmt='g', cmap='Blues', 
                                 xticklabels=['Positif (0)', 'Negatif (1)'], 
                                 yticklabels=['Positif (0)', 'Negatif (1)'], ax=ax)
-                    
-                    ax.set_xlabel("Prediksi")
-                    ax.set_ylabel("Aktual")
-                    ax.set_title(f"Confusion Matrix {model_display}")
-                    
+                    ax.set_xlabel("Prediksi"); ax.set_ylabel("Aktual"); ax.set_title(f"Confusion Matrix {model_display}")
                     st.pyplot(fig)
 
             except FileNotFoundError:
@@ -349,44 +309,34 @@ with tab4:
         if not st.session_state.is_processed:
             st.warning("Mohon pre-processing dulu di Tab 1.")
         else:
-            # 1. TAMPILAN PRE-PROCESSING LENGKAP
             cf_txt, norm_txt, tok_txt, stem_txt = cleaning_process_detailed(input_text, norm_dict)
             
             st.markdown("### 📝 Tahapan Pre-processing")
             
+            # Menggunakan text_input agar rapi dan tidak ada scrollbar vertikal
             st.text_input("1. Case Folding", value=cf_txt, disabled=True)
             st.text_input("2. Normalization", value=norm_txt, disabled=True)
-            st.text_area("3. Tokenizing", value=tok_txt, disabled=True, height=68)
+            st.text_area("3. Tokenizing", value=tok_txt, disabled=True) # Height default
             st.text_input("4. Stemming (Input Model)", value=stem_txt, disabled=True)
             
             st.divider()
             
-            # 2. PROSES PREDIKSI
             df = st.session_state.df_processed
             vec = TfidfVectorizer()
             X_vec = vec.fit_transform(df['Stemming'])
             y = df['label']
             
             if model_opt == "SVM":
-                model = SVC(kernel='linear', C=1, probability=True).fit(X_vec, y)
+                model = SVC(kernel='linear', C=1, probability=True, random_state=42).fit(X_vec, y)
             else:
                 model = MultinomialNB().fit(X_vec, y)
             
-            # Predict
             pred_vec = vec.transform([stem_txt])
             pred = model.predict(pred_vec)[0]
             proba = model.predict_proba(pred_vec).max()
             
-            # 3. HASIL PREDIKSI (EMOJI)
             st.markdown("### 🎯 Hasil Analisis Sentimen")
-            
             if pred == 0:
-                st.success(f"""
-                # POSITIF 😊
-                **Confidence Score: {proba:.2%}**
-                """)
+                st.success(f"**SENTIMEN POSITIF 😊**\nConfidence Score: {proba:.2%}")
             else:
-                st.error(f"""
-                # NEGATIF 😡
-                **Confidence Score: {proba:.2%}**
-                """)
+                st.error(f"**SENTIMEN NEGATIF 😡**\nConfidence Score: {proba:.2%}")
