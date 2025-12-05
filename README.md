@@ -13,7 +13,7 @@ Penelitian ini bertujuan untuk memonitor kepuasan pengguna aplikasi akademik My 
 **Fitur Utama:**
 * **Preprocessing Pipeline:** Case Folding, Normalization, Tokenizing, dan Stemming (Sastrawi).
 * **Visualisasi Data:** WordCloud untuk sentimen Positif & Negatif.
-* **Evaluasi Model:** Menggunakan K-Fold Cross Validation (K=3, 5, 10).
+* **Evaluasi Model:** Menggunakan K-Fold Cross Validation (K = 3, 5, 10).
 * **Klasifikasi Live:** Uji coba prediksi sentimen secara *real-time* dengan input teks baru.
 
 ## 📊 Hasil Evaluasi
