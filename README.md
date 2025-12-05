@@ -40,8 +40,8 @@ Berdasarkan pengujian menggunakan dataset sebanyak **138 ulasan bersih**:
 
 1.  **Clone repository ini:**
     ```bash
-    git clone [https://github.com/username-kamu/sentimen-mytelu.git](https://github.com/username-kamu/sentimen-mytelu.git)
-    cd sentimen-mytelu
+    git clone [https://github.com/zidanealdanifr/sentimenmytelu.git]
+    cd sentimenmytelu
     ```
 
 2.  **Install library yang dibutuhkan:**
