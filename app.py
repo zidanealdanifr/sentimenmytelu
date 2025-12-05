@@ -33,33 +33,6 @@ st.markdown("""
         border-radius: 5px;
         text-align: center;
     }
-
-    /* --- MENGHILANGKAN SCROLLBAR (AGRESIF) --- */
-    
-    /* 1. Sembunyikan scrollbar global (Chrome/Safari/Webkit) */
-    ::-webkit-scrollbar {
-        width: 0px;
-        background: transparent;
-        display: none;
-    }
-
-    /* 2. Sembunyikan scrollbar khusus Sidebar (Chrome/Safari/Webkit) */
-    [data-testid="stSidebar"] ::-webkit-scrollbar {
-        display: none;
-        width: 0px;
-    }
-    
-    /* 3. Sembunyikan scrollbar Sidebar (Firefox) */
-    section[data-testid="stSidebar"] {
-        scrollbar-width: none; /* Firefox */
-        -ms-overflow-style: none; /* IE/Edge */
-    }
-    
-    /* 4. Memastikan konten user di sidebar juga tidak memunculkan scrollbar */
-    [data-testid="stSidebarUserContent"] {
-        scrollbar-width: none;
-        -ms-overflow-style: none;
-    }
     
 </style>
 """, unsafe_allow_html=True)
@@ -389,4 +362,5 @@ with tab4:
                 st.error(f"""
                 # NEGATIF 😡
                 **Confidence Score: {proba:.2%}**
+
                 """)
