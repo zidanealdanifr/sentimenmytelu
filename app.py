@@ -368,7 +368,7 @@ with tab4:
             y = df['label']
             
             if model_opt == "SVM":
-                model = SVC(kernel='linear', C=1, probability=True).fit(X_vec, y)
+                model = SVC(kernel='linear', C=1, probability=True, random_state=42).fit(X_vec, y)
             else:
                 model = MultinomialNB().fit(X_vec, y)
             
