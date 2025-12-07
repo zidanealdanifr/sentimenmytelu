@@ -5,11 +5,9 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from Sastrawi.Stemmer.StemmerFactory import StemmerFactory
 from nltk.tokenize import word_tokenize
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.naive_bayes import MultinomialNB
-from sklearn.svm import SVC
 import nltk
 import time
+import joblib  
 
 # --- 0. KONFIGURASI HALAMAN ---
 st.set_page_config(
@@ -19,13 +17,12 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- CSS CUSTOM (Hanya untuk merapikan kotak angka/Metric, TIDAK ADA HACK SCROLLBAR) ---
+# --- CSS CUSTOM ---
 st.markdown("""
 <style>
     .stDataFrame { width: 100%; }
     h1, h2, h3 { color: #8B0000; } /* Merah Maroon TelU */
     
-    /* Styling Container Metric agar rapi */
     div[data-testid="stMetric"] {
         background-color: #ffffff;
         padding: 15px;
@@ -46,7 +43,26 @@ def setup_resources():
 
 stemmer = setup_resources()
 
-# --- 2. FUNGSI LOAD DATA ---
+# --- FUNGSI LOAD MODEL DARI all_models.pkl ---
+@st.cache_resource
+def load_trained_models():
+    try:
+        # 1. Load Vectorizer
+        vec = joblib.load('vectorizer.pkl')
+        
+        # 2. Load Paket Model (all_models.pkl)
+        # Isinya dictionary: {'svm': model_svm, 'nb': model_nb}
+        models_pack = joblib.load('all_models.pkl')
+        
+        # 3. Ekstrak Model
+        nb = models_pack['nb']
+        svm = models_pack['svm']
+        
+        return vec, nb, svm, None
+    except Exception as e:
+        return None, None, None, str(e)
+
+# --- 2. FUNGSI LOAD DATA (Untuk Tampilan Tabel) ---
 @st.cache_data
 def load_dataset():
     # Load Ulasan
@@ -97,10 +113,6 @@ def cleaning_process_detailed(text, norm_dict):
     
     return cf, norm_str, tok_str, stem_str
 
-def clean_percent(val):
-    if isinstance(val, str): return float(val.replace('%', ''))
-    return val
-
 # ==========================================
 # UI UTAMA APLIKASI
 # ==========================================
@@ -111,7 +123,6 @@ with st.sidebar:
     Penelitian ini bertujuan untuk menganalisis sentimen ulasan pengguna aplikasi **"My TelU"** serta membandingkan performa algoritma **Naïve Bayes** dan **Support Vector Machine (SVM)**.
     """)
     
-    # Detail Metodologi
     st.markdown("""
     **📂 Dataset & Pre-processing**
     Menggunakan **138 ulasan bersih** melalui tahapan:
@@ -133,8 +144,11 @@ st.markdown("Dashboard monitoring sentimen pengguna aplikasi My TelU berdasarkan
 
 st.divider()
 
-# Load Data
+# Load Data untuk UI
 df_raw, norm_dict, df_norm_view, error_msg = load_dataset()
+
+# Load Model untuk Prediksi 
+vec_pkl, nb_pkl, svm_pkl, pkl_error = load_trained_models()
 
 if error_msg:
     st.error(error_msg)
@@ -172,7 +186,6 @@ with tab1:
     col_d1, col_d2 = st.columns(2)
     with col_d1:
         st.write("**Dataset Ulasan**")
-        # Menghapus height=300 agar tabel memanjang otomatis tanpa scroll dalam
         st.dataframe(df_raw[['Nama', 'content', 'score']], use_container_width=True)
     
     with col_d2:
@@ -296,47 +309,51 @@ with tab3:
 with tab4:
     st.subheader("Uji Coba Model (Live)")
     
-    col_input, col_pred = st.columns([2, 1])
-    with col_input:
-        input_text = st.text_area("Masukkan Ulasan Baru:", height=150, placeholder="Ketik ulasan di sini...")
-        
-    with col_pred:
-        model_opt = st.selectbox("Model Prediksi:", ["Naïve Bayes", "SVM"])
-        st.write("") 
-        predict_btn = st.button("Analisis Sekarang 🔍", type="primary", use_container_width=True)
-        
-    if predict_btn:
-        if not st.session_state.is_processed:
-            st.warning("Mohon pre-processing dulu di Tab 1.")
-        else:
+    # Tampilkan Error jika file PKL tidak ditemukan
+    if pkl_error:
+        st.error(f"❌ Gagal memuat file Model: {pkl_error}")
+        st.warning("Pastikan file 'vectorizer.pkl' dan 'all_models.pkl' ada di folder yang sama dengan app.py")
+    else:
+        col_input, col_pred = st.columns([2, 1])
+        with col_input:
+            input_text = st.text_area("Masukkan Ulasan Baru:", height=150, placeholder="Ketik ulasan di sini...")
+            
+        with col_pred:
+            model_opt = st.selectbox("Model Prediksi:", ["Naïve Bayes", "SVM"])
+            st.write("") 
+            predict_btn = st.button("Analisis Sekarang 🔍", type="primary", use_container_width=True)
+            
+        if predict_btn:
+            # 1. Preprocessing Input User (Gunakan fungsi cleaning yang sama)
             cf_txt, norm_txt, tok_txt, stem_txt = cleaning_process_detailed(input_text, norm_dict)
             
             st.markdown("### 📝 Tahapan Pre-processing")
             
-            # Menggunakan text_input agar rapi dan tidak ada scrollbar vertikal
             st.text_input("1. Case Folding", value=cf_txt, disabled=True)
             st.text_input("2. Normalization", value=norm_txt, disabled=True)
-            st.text_area("3. Tokenizing", value=tok_txt, disabled=True) # Height default
+            st.text_area("3. Tokenizing", value=tok_txt, disabled=True) 
             st.text_input("4. Stemming (Input Model)", value=stem_txt, disabled=True)
             
             st.divider()
             
-            df = st.session_state.df_processed
-            vec = TfidfVectorizer()
-            X_vec = vec.fit_transform(df['Stemming'])
-            y = df['label']
-            
-            if model_opt == "SVM":
-                model = SVC(kernel='linear', C=1, probability=True, random_state=42).fit(X_vec, y)
+            if stem_txt:
+                # 2. Vectorize menggunakan VEC dari PKL
+                pred_vec = vec_pkl.transform([stem_txt])
+                
+                # 3. Pilih Model dari PKL (yang sudah di-unpack di awal)
+                if model_opt == "SVM":
+                    model = svm_pkl
+                else:
+                    model = nb_pkl
+                
+                # 4. Prediksi
+                pred = model.predict(pred_vec)[0]
+                proba = model.predict_proba(pred_vec).max()
+                
+                st.markdown("### 🎯 Hasil Analisis Sentimen")
+                if pred == 0:
+                    st.success(f"**SENTIMEN POSITIF 😊**\nConfidence Score: {proba:.2%}")
+                else:
+                    st.error(f"**SENTIMEN NEGATIF 😡**\nConfidence Score: {proba:.2%}")
             else:
-                model = MultinomialNB().fit(X_vec, y)
-            
-            pred_vec = vec.transform([stem_txt])
-            pred = model.predict(pred_vec)[0]
-            proba = model.predict_proba(pred_vec).max()
-            
-            st.markdown("### 🎯 Hasil Analisis Sentimen")
-            if pred == 0:
-                st.success(f"**SENTIMEN POSITIF 😊**\nConfidence Score: {proba:.2%}")
-            else:
-                st.error(f"**SENTIMEN NEGATIF 😡**\nConfidence Score: {proba:.2%}")
+                st.warning("⚠️ Teks input kosong atau hanya berisi simbol.")
